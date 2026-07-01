@@ -15,3 +15,7 @@ target/
 
 # Docker / build artifacts if any
 **/target/
+deploy/minikube-linux-amd64
+*.exe
+*.bin
+*.zip

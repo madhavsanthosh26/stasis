@@ -1,0 +1,17 @@
+# Maven
+target/
+*.class
+
+# OS
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# Linux binaries
+*.bin
+*.out
+
+# Docker / build artifacts if any
+**/target/

@@ -6,10 +6,14 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;    
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 @Component
 public class SignalListener {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final KubernetesClient kubernetesClient = new KubernetesClientBuilder().build();
+    private Map<String, LocalDateTime> cooldownMap = new HashMap<>();
 
     @KafkaListener(topics = "raw-signals", groupId = "stasis-orchestration")
     public void onSignal(String message){
@@ -20,7 +24,16 @@ public class SignalListener {
 
             if(signal.getErrorRate() > 0.7){
                 System.out.println("Anomaly detected in: " + signal.getService());
+                String serviceName = extractServiceName(signal.getService());
+
+                LocalDateTime lastRestart = cooldownMap.get(serviceName);
+                if(lastRestart != null && lastRestart.isAfter(LocalDateTime.now().minusSeconds(60))){
+                    System.out.println("Cooldown is active, Skipping the restart of "+ serviceName);
+                    return;
+                }
+                
                 restartPod(signal.getService());
+                cooldownMap.put(serviceName, LocalDateTime.now());
             }
         }catch(Exception e){
             System.out.println("Failed to parse signal: " + e.getMessage());
@@ -46,5 +59,10 @@ public class SignalListener {
         }catch(Exception e){
             System.out.println("Failed to write the audit log: "+e.getMessage());
         }
+    }
+    
+    private String extractServiceName(String podName){
+        String[] parts = podName.split("-");
+        return parts[0];
     }
 }
